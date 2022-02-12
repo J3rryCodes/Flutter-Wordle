@@ -130,5 +130,6 @@ class GameController extends GetxController {
         if (a.runtimeType == String) wordList.add(a.toString().toUpperCase());
       }
     }
+    log("words loaded ${wordList.length}");
   }
 }
