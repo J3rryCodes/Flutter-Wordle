@@ -10,7 +10,7 @@ class GameBoard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double height = 450;
+    const double height = 450;
     final double width = MediaQuery.of(context).size.width;
 
     return Center(
@@ -20,7 +20,7 @@ class GameBoard extends StatelessWidget {
         padding: const EdgeInsets.all(20),
         alignment: Alignment.center,
         child: GetX<GameController>(builder: (controller) {
-          log(controller.test.toString());
+          log(controller.refreshingVar.toString());
           return Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: controller.gameTable

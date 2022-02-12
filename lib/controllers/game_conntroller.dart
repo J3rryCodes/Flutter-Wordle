@@ -1,4 +1,10 @@
+import 'dart:convert';
+import 'dart:developer';
+import 'dart:math' as math;
+
 import 'package:copy_of_wordle/models/tile_model.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 
 class GameController extends GetxController {
@@ -12,43 +18,51 @@ class GameController extends GetxController {
     [TileModel(), TileModel(), TileModel(), TileModel(), TileModel()],
     [TileModel(), TileModel(), TileModel(), TileModel(), TileModel()]
   ];
-
   var gameText = "".obs;
 
   int _currentRow = 0;
   int _currentColumn = 0;
 
-  RxInt test = 0.obs;
+  RxInt refreshingVar = 0.obs;
+
+  List<String> inTextLetters = <String>[];
+  List<String> onPositionLetters = <String>[];
+  List<String> notFoundLetters = <String>[];
+
+  RxBool isGameWon = false.obs;
+
+  RxBool wordNotFount = false.obs;
+  List<String> wordList = [];
 
 //initilizing game
   void init() {
-    gameTable = [
-      [TileModel(), TileModel(), TileModel(), TileModel(), TileModel()],
-      [TileModel(), TileModel(), TileModel(), TileModel(), TileModel()],
-      [TileModel(), TileModel(), TileModel(), TileModel(), TileModel()],
-      [TileModel(), TileModel(), TileModel(), TileModel(), TileModel()],
-      [TileModel(), TileModel(), TileModel(), TileModel(), TileModel()],
-      [TileModel(), TileModel(), TileModel(), TileModel(), TileModel()]
-    ];
-    gameText = RxString("");
+    gameTable = _getTileModelList();
+    gameText.value = "";
     _currentRow = 0;
     _currentColumn = 0;
-    test = RxInt(0);
+    inTextLetters = <String>[];
+    onPositionLetters = <String>[];
+    notFoundLetters = <String>[];
+    isGameWon.value = false;
     findText();
+    isGameWon.value = false;
   }
 
-// Keybord input to this method
-  void addData(String data) {
+// Keybord input to this method returning true if game won!!!
+  addData(String data) {
     //debugPrint("Key pressed : '$data'  Enter  : ${data == "ENTER" && _currentColumn == _maxColumn && _currentRow < _maxRow}  BACKSPACE : ${data == "BACKSPACE" && _currentColumn != 0}  Letter : ${_currentColumn != _maxColumn + 1} ");
     if (data == "ENTER" && _currentColumn > _maxColumn) {
-      findColumnColorAfterNewLine();
-    }
-
-    if (data == "ENTER" &&
-        _currentColumn > _maxColumn &&
-        _currentRow < _maxRow) {
-      _currentRow++;
-      _currentColumn = 0;
+      if (!_chekIfStringIntheWordList()) {
+        int noCurrectLetter = findColumnColorAfterNewLine();
+        isGameWon.value = noCurrectLetter == _maxColumn + 1;
+        _currentColumn = 0;
+        if (_currentRow < _maxRow) {
+          _currentRow++;
+        }
+      } else {
+        debugPrint("Word not fount");
+        wordNotFount.value = true;
+      }
     } else if (data == "BACKSPACE" && _currentColumn != 0) {
       _currentColumn--;
       gameTable[_currentRow][_currentColumn].text = "";
@@ -56,21 +70,64 @@ class GameController extends GetxController {
       gameTable[_currentRow][_currentColumn].text = data;
       _currentColumn++;
     }
-    test++;
+    refreshingVar++;
+    return false;
   }
 
 //set random text for game
-  void findText() {
-    gameText = RxString("SKILL");
+  Future<void> findText() async {
+    await _loadWords();
+    int index = math.Random().nextInt(wordList.length);
+    gameText = RxString(wordList[index].toString().toUpperCase());
+    debugPrint("Game Text : $gameText");
   }
 
-  findColumnColorAfterNewLine() {
+// returning count of how many correct guess
+  int findColumnColorAfterNewLine() {
+    int onPossitionCount = 0;
     for (int i = 0; i < gameTable[_currentRow].length; i++) {
       String letter = gameTable[_currentRow][i].text;
       if (gameText.substring(i, i + 1) == letter) {
         gameTable[_currentRow][i].columnType = LetterType.onPosition;
+        onPositionLetters.add(letter);
+        onPossitionCount++;
       } else if (gameText.contains(letter)) {
         gameTable[_currentRow][i].columnType = LetterType.inText;
+        inTextLetters.add(letter);
+      } else {
+        notFoundLetters.add(letter);
+      }
+    }
+    return onPossitionCount;
+  }
+
+  List<List<TileModel>> _getTileModelList() {
+    return [
+      [TileModel(), TileModel(), TileModel(), TileModel(), TileModel()],
+      [TileModel(), TileModel(), TileModel(), TileModel(), TileModel()],
+      [TileModel(), TileModel(), TileModel(), TileModel(), TileModel()],
+      [TileModel(), TileModel(), TileModel(), TileModel(), TileModel()],
+      [TileModel(), TileModel(), TileModel(), TileModel(), TileModel()],
+      [TileModel(), TileModel(), TileModel(), TileModel(), TileModel()]
+    ];
+  }
+
+  bool _chekIfStringIntheWordList() {
+    String s = "";
+    for (int i = 0; i < gameTable[_currentRow].length; i++) {
+      s += gameTable[_currentRow][i].text;
+    }
+    log("TEXT FOUBND  $s :  ${wordList.contains(s)}");
+    return !wordList.contains(s);
+  }
+
+  Future _loadWords() async {
+    if (wordList.isEmpty) {
+      String response =
+          await rootBundle.loadString('assets/json/json_file.json');
+      Map<String, dynamic> data = await json.decode(response);
+      for (var a in data['words']) {
+        if (a.runtimeType == String) wordList.add(a.toString().toUpperCase());
       }
     }
   }

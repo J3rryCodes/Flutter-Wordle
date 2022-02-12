@@ -35,7 +35,6 @@ class KeyboardLayout extends StatelessWidget {
   }
 
   Widget _button(double width, String text) {
-    GameController gameController = Get.find<GameController>();
     // this paramiter will check if its ENTER or BACKSPACE
     bool isSpecialButton = text.length > 1;
     final double buttonWidth = width > 900
@@ -44,21 +43,41 @@ class KeyboardLayout extends StatelessWidget {
             ? width / 8
             : width / 12;
     final double buttonHeight = width > 820 ? 80 : width / 12;
-    return InkWell(
-      onTap: () {
-        gameController.addData(text);
-      },
-      child: Container(
-        height: buttonHeight,
-        width: buttonWidth,
-        decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(4), color: Colors.pink),
-        margin: const EdgeInsets.all(2),
-        alignment: Alignment.center,
-        child: text == "BACKSPACE"
-            ? const Icon(Icons.backspace_outlined, color: Colors.white)
-            : Text(text, style: const TextStyle(color: Colors.white)),
-      ),
-    );
+    return GetX<GameController>(builder: (gameController) {
+      debugPrint(gameController.refreshingVar.toString());
+
+      bool shouldRejectText = false;
+      Color color = Colors.pink;
+      if (gameController.onPositionLetters.contains(text)) {
+        color = Colors.green;
+      } else if (gameController.inTextLetters.contains(text)) {
+        color = Colors.orange;
+      } else if (gameController.notFoundLetters.contains(text)) {
+        color = Colors.transparent;
+        shouldRejectText = true;
+      }
+      return InkWell(
+        onTap: () {
+          if (!shouldRejectText) {
+            if (gameController.addData(text)) {
+              Get.defaultDialog(title: "", middleText: "Game Won");
+            }
+          }
+        },
+        child: Container(
+          height: buttonHeight,
+          width: buttonWidth,
+          decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(4),
+              color: color,
+              border: Border.all(color: Colors.white)),
+          margin: const EdgeInsets.all(2),
+          alignment: Alignment.center,
+          child: text == "BACKSPACE"
+              ? const Icon(Icons.backspace_outlined, color: Colors.white)
+              : Text(text, style: const TextStyle(color: Colors.white)),
+        ),
+      );
+    });
   }
 }
